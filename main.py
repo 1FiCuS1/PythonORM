@@ -6,15 +6,21 @@ from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
 class PasswordManager:
     def __init__(self):
         self.key = os.getenv("ENCRYPTION_KEY").encode()
         self.cipher_suite = Fernet(self.key)
-        self.encrypted_password = self.cipher_suite.encrypt(os.getenv("DB_PASSWORD").encode())
+        self.encrypted_password = self.cipher_suite.encrypt(
+            os.getenv("DB_PASSWORD").encode()
+        )
 
     def get_password(self):
         decrypted_password = self.cipher_suite.decrypt(self.encrypted_password)
         return decrypted_password.decode()
+
+
 password_manager = PasswordManager()
 db_password = password_manager.get_password()
 
@@ -56,18 +62,58 @@ sale5 = Sale(book=b4, shop=shop2, count=30, price=700, date_sale="2022-01-01")
 stock6 = Stock(book=b3, shop=shop2, count=23)
 sale6 = Sale(book=b3, shop=shop2, count=20, price=400, date_sale="2023-03-05")
 
-session.add_all([p1, p2, p3, b1, b2, b3, b4, b5, b6, b7, b8, b9,
-                 shop1, shop2, stock1, stock2, stock3, stock4,
-                 stock5, stock6, sale1, sale2, sale3, sale4,
-                 sale5, sale6])
+session.add_all(
+    [
+        p1,
+        p2,
+        p3,
+        b1,
+        b2,
+        b3,
+        b4,
+        b5,
+        b6,
+        b7,
+        b8,
+        b9,
+        shop1,
+        shop2,
+        stock1,
+        stock2,
+        stock3,
+        stock4,
+        stock5,
+        stock6,
+        sale1,
+        sale2,
+        sale3,
+        sale4,
+        sale5,
+        sale6,
+    ]
+)
 session.commit()
 
-p = session.query(Publisher).filter(Publisher.name == "Пушкин").first()
-if p:
-    idpublisher = p.idpublisher
-    salesubquery = session.query(Sale).join(Stock).join(Shop).join(Book).filter(Book.idpublisher == p.idpublisher).subquery('t')
-    shops = session.query(Shop).join(Stock).join(Sale).filter(Sale.id == salesubquery.c.id).all()
-    for shop in shops:
-        print(shop)
-else:
-    print("Издатель не найден.")
+
+def get_shops(data):
+    query = (
+        session.query(Book.title, Shop.title, Sale.price, Sale.date_sale)
+        .select_from(Shop)
+        .join(Stock)
+        .join(Book)
+        .join(Publisher)
+        .join(Sale)
+    )
+
+    if data.isdigit():
+        result = query.filter(Publisher.idpublisher == int(data)).all()
+    else:
+        result = query.filter(Publisher.name == data).all()
+
+    for title, shop, price, date in result:
+        print(f"{title: <40} | {shop: <10} | {price: <8} | {date.strftime('%d-%m-%Y')}")
+
+
+if __name__ == "__main__":
+    data = input("Введите id или имя издателя: ")
+    get_shops(data)
